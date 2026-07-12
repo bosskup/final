@@ -698,7 +698,7 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
 end)
 
 -- ==========================================
--- 🔵 [Aimlock Loop: Runs AFTER ESP, overrides Camera last]
+-- 🔵 [Aimlock Loop: Camera only, no HumanoidRootPart touch]
 -- ==========================================
 RunService:BindToRenderStep("PvpCameraOverride", Enum.RenderPriority.Camera.Value + 1, function()
     if not sg.Parent then return end
@@ -706,12 +706,6 @@ RunService:BindToRenderStep("PvpCameraOverride", Enum.RenderPriority.Camera.Valu
     if AimlockEnabled and _G.LockedTarget then
         if not _G.LockedTarget.Character or not _G.LockedTarget.Character:FindFirstChild("HumanoidRootPart") or _G.LockedTarget.Character.Humanoid.Health <= 0 or not isValidTarget(_G.LockedTarget) then
             _G.LockedTarget = nil
-            
-            -- [คืนค่า AutoRotate กลับเป็น True เมื่อหลุดล็อกเป้า]
-            if player.Character and player.Character:FindFirstChild("Humanoid") then
-                player.Character.Humanoid.AutoRotate = true
-            end
-            
             setBtnState(aimMobileBtn, false, {Color3.fromRGB(0, 200, 100), Color3.fromRGB(0, 150, 50)}, {Color3.fromRGB(255, 50, 50), Color3.fromRGB(180, 0, 0)})
             aimMobileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
             aimMobileBtn.Text = "AIM\n(OFF)"
@@ -719,14 +713,11 @@ RunService:BindToRenderStep("PvpCameraOverride", Enum.RenderPriority.Camera.Valu
         else
             local targetPart = _G.LockedTarget.Character.HumanoidRootPart
             local targetVelocity = targetPart.AssemblyLinearVelocity
-            
             local predictedPosition = targetPart.Position + (targetVelocity * _G.Prediction)
             local screenPos, onScreen = Camera:WorldToViewportPoint(predictedPosition)
-            
             local isMobile = UserInputService.TouchEnabled
-            
+
             if mousemoverel and not isMobile then
-                -- [สำหรับ PC: ขยับเมาส์ตามปกติ]
                 if onScreen then
                     local centerPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                     local deltaX = (screenPos.X - centerPos.X) * _G.AimSmoothness
@@ -734,35 +725,9 @@ RunService:BindToRenderStep("PvpCameraOverride", Enum.RenderPriority.Camera.Valu
                     mousemoverel(deltaX, deltaY)
                 end
             else
-                -- ==========================================================
-                -- 📱 [สำหรับมือถือ / No-Mouse: หมุนกล้อง + หมุนตัวละครแกน Y]
-                -- ==========================================================
-                
-                -- 1. หมุนกล้องหันหาเป้าหมาย (ได้ทั้ง ก้ม-เงย-ซ้าย-ขวา)
+                -- Mobile: Camera.CFrame only, ไม่แตะ HumanoidRootPart เด็ดขาด
                 Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, predictedPosition)
-                
-                -- 2. จัดการหมุนตัวละคร (เฉพาะแนวราบ แกน Y)
-                local myChar = player.Character
-                if myChar and myChar:FindFirstChild("HumanoidRootPart") and myChar:FindFirstChild("Humanoid") then
-                    local myHrp = myChar.HumanoidRootPart
-                    local myHum = myChar.Humanoid
-                    
-                    -- ปิด AutoRotate ของเกมชั่วคราว เพื่อไม่ให้ฟิสิกส์ตีกันจนหน้าจอสั่น
-                    if myHum.AutoRotate then myHum.AutoRotate = false end
-                    
-                    -- สร้างพิกัดเป้าหมายโดย "ยึดความสูง (Y) ของตัวเราเอง" ตัวละครจะได้ไม่ก้ม/เงยจนเสียสมดุล
-                    local flatTargetPos = Vector3.new(predictedPosition.X, myHrp.Position.Y, predictedPosition.Z)
-                    
-                    -- ค่อยๆ หมุนตัวละครไปหาเป้าในแนวราบด้วย Lerp (0.5 คือความเร็วที่สมูทและกระสุนออกตรงจุดที่สุด)
-                    local targetCFrame = CFrame.lookAt(myHrp.Position, flatTargetPos)
-                    myHrp.CFrame = myHrp.CFrame:Lerp(targetCFrame, 0.5)
-                end
             end
-        end
-    else
-        -- [คืนค่า AutoRotate เมื่อไม่ได้เปิด Aimlock]
-        if player.Character and player.Character:FindFirstChild("Humanoid") and not player.Character.Humanoid.AutoRotate then
-            player.Character.Humanoid.AutoRotate = true
         end
     end
 end)
