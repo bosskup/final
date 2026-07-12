@@ -1,4 +1,3 @@
-
 -- ==========================================
 -- 🛠️ criminal Hex X Premium PVP
 -- ==========================================
@@ -440,7 +439,7 @@ local function toggleAimLock()
     end
 end
 
-aimMobileBtn.MouseButton1Click:Connect(toggleAimLock)
+aimMobileBtn.Activated:Connect(toggleAimLock)
 
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed then return end 
@@ -682,20 +681,20 @@ RunService.RenderStepped:Connect(function()
     end
 
     if AimlockEnabled and _G.LockedTarget then
-        if not _G.LockedTarget.Character or not _G.LockedTarget.Character:FindFirstChild("Head") or _G.LockedTarget.Character.Humanoid.Health <= 0 or not isValidTarget(_G.LockedTarget) then
+        if not _G.LockedTarget.Character or not _G.LockedTarget.Character:FindFirstChild("HumanoidRootPart") or _G.LockedTarget.Character.Humanoid.Health <= 0 or not isValidTarget(_G.LockedTarget) then
             _G.LockedTarget = nil
             setBtnState(aimMobileBtn, false, {Color3.fromRGB(0, 200, 100), Color3.fromRGB(0, 150, 50)}, {Color3.fromRGB(255, 50, 50), Color3.fromRGB(180, 0, 0)})
             aimMobileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
             aimMobileBtn.Text = "AIM\n(OFF)"
             aimMobileBtn:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(255, 50, 50)
         else
-            local targetPart = _G.LockedTarget.Character.Head
+            local targetPart = _G.LockedTarget.Character.HumanoidRootPart
             local targetVelocity = targetPart.AssemblyLinearVelocity
             
             local predictedPosition = targetPart.Position + (targetVelocity * _G.Prediction)
             local screenPos, onScreen = Camera:WorldToViewportPoint(predictedPosition)
             
-            local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+            local isMobile = UserInputService.TouchEnabled
             
             if mousemoverel and not isMobile then
                 if onScreen then
