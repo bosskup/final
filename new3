@@ -650,10 +650,23 @@ RunService:BindToRenderStep("PvpMainLoop", Enum.RenderPriority.Camera.Value + 1,
                 Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, predictedPosition)
                 -- หมุน HumanoidRootPart ตามกล้อง (เฉพาะแนวราบ ไม่ขยับตำแหน่ง)
                 local myChar = player.Character
-                if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+                if myChar and myChar:FindFirstChild("HumanoidRootPart") and myChar:FindFirstChild("Humanoid") then
                     local myHrp = myChar.HumanoidRootPart
                     local flatTarget = Vector3.new(predictedPosition.X, myHrp.Position.Y, predictedPosition.Z)
                     myHrp.CFrame = CFrame.lookAt(myHrp.Position, flatTarget)
+
+                    -- [FIX เดินผิดทิศ]: ดึงค่าจอยสติ๊กมาสั่งเดินใหม่ให้อิงตามกล้อง Aimlock
+                    pcall(function()
+                        local pm = player.PlayerScripts:FindFirstChild("PlayerModule")
+                        if pm then
+                            local controlModule = require(pm):GetControls()
+                            local moveVec = controlModule:GetMoveVector()
+                            if moveVec.Magnitude > 0 then
+                                -- สั่งเดินโดยอิงตาม Camera (true) ที่เพิ่งหมุนไป
+                                myChar.Humanoid:Move(moveVec, true)
+                            end
+                        end
+                    end)
                 end
             end
         end
