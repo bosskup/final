@@ -690,8 +690,15 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
             end
         end
     end
+end)
 
-if AimlockEnabled and _G.LockedTarget then
+-- ==========================================
+-- 🔵 [Aimlock Loop: Runs AFTER ESP, overrides Camera last]
+-- ==========================================
+RunService:BindToRenderStep("PvpCameraOverride", Enum.RenderPriority.Camera.Value + 1, function()
+    if not sg.Parent then return end
+
+    if AimlockEnabled and _G.LockedTarget then
         if not _G.LockedTarget.Character or not _G.LockedTarget.Character:FindFirstChild("HumanoidRootPart") or _G.LockedTarget.Character.Humanoid.Health <= 0 or not isValidTarget(_G.LockedTarget) then
             _G.LockedTarget = nil
             
