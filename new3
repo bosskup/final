@@ -704,9 +704,7 @@ RunService.RenderStepped:Connect(function()
                     mousemoverel(deltaX, deltaY)
                 end
             else
-                local targetCFrame = CFrame.lookAt(Camera.CFrame.Position, predictedPosition)
-                local lerpSpeed = _G.AimSmoothness <= 1 and _G.AimSmoothness or 0.5
-                Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, lerpSpeed)
+                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, predictedPosition)
             end
         end
     end
