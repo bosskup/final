@@ -705,6 +705,12 @@ RunService.RenderStepped:Connect(function()
                 end
             else
                 Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, predictedPosition)
+                
+                -- Force Character Body to turn towards the target so the gun points correctly in 1st person
+                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                    local hrp = player.Character.HumanoidRootPart
+                    hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(predictedPosition.X, hrp.Position.Y, predictedPosition.Z))
+                end
             end
         end
     end
