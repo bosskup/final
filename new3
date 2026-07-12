@@ -591,11 +591,12 @@ aptEnterBtn.MouseButton1Click:Connect(teleportEnterApt)
 aptExitBtn.MouseButton1Click:Connect(teleportExitApt)
 
 -- ==========================================
--- 🔄 [Loop RunService Main]
+-- 🔄 [Main Loop: Aimlock FIRST, then ESP]
 -- ==========================================
-RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value + 1, function()
-    if not sg.Parent then return end 
-    
+RunService:BindToRenderStep("PvpMainLoop", Enum.RenderPriority.Camera.Value + 1, function()
+    if not sg.Parent then return end
+
+    -- [1] Speed + Rainbow
     local char = player.Character
     if char then
         local humanoid = char:FindFirstChild("Humanoid")
@@ -606,8 +607,6 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
                 if humanoid.WalkSpeed > 16 then humanoid.WalkSpeed = 16 end
             end
         end
-        
-        -- Rainbow UI text override (Added Null Check for safety)
         local hue = tick() % 3 / 3
         local rainbowColor = Color3.fromHSV(hue, 1, 1)
         for _, obj in pairs(char:GetDescendants()) do
@@ -622,6 +621,46 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
         end
     end
 
+    -- [2] AIMLOCK: บังคับกล้อง + หมุน HRP ก่อน
+    -- ต้องทำก่อน ESP เพื่อให้ WorldToViewportPoint ของ ESP ใช้กล้องที่ถูกต้อง
+    if AimlockEnabled and _G.LockedTarget then
+        if not _G.LockedTarget.Character or not _G.LockedTarget.Character:FindFirstChild("HumanoidRootPart") or _G.LockedTarget.Character.Humanoid.Health <= 0 or not isValidTarget(_G.LockedTarget) then
+            _G.LockedTarget = nil
+            setBtnState(aimMobileBtn, false, {Color3.fromRGB(0, 200, 100), Color3.fromRGB(0, 150, 50)}, {Color3.fromRGB(255, 50, 50), Color3.fromRGB(180, 0, 0)})
+            aimMobileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            aimMobileBtn.Text = "AIM\n(OFF)"
+            aimMobileBtn:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(255, 50, 50)
+        else
+            local targetPart = _G.LockedTarget.Character.HumanoidRootPart
+            local targetVelocity = targetPart.AssemblyLinearVelocity
+            local predictedPosition = targetPart.Position + (targetVelocity * _G.Prediction)
+            local screenPos, onScreen = Camera:WorldToViewportPoint(predictedPosition)
+            local isMobile = UserInputService.TouchEnabled
+
+            if mousemoverel and not isMobile then
+                -- PC: mousemoverel
+                if onScreen then
+                    local centerPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                    local deltaX = (screenPos.X - centerPos.X) * _G.AimSmoothness
+                    local deltaY = (screenPos.Y - centerPos.Y) * _G.AimSmoothness
+                    mousemoverel(deltaX, deltaY)
+                end
+            else
+                -- Mobile: หมุนกล้องก่อน
+                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, predictedPosition)
+                -- หมุน HumanoidRootPart ตามกล้อง (เฉพาะแนวราบ ไม่ขยับตำแหน่ง)
+                local myChar = player.Character
+                if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+                    local myHrp = myChar.HumanoidRootPart
+                    local flatTarget = Vector3.new(predictedPosition.X, myHrp.Position.Y, predictedPosition.Z)
+                    myHrp.CFrame = CFrame.lookAt(myHrp.Position, flatTarget)
+                end
+            end
+        end
+    end
+
+    -- [3] ESP: หลังจาก Camera ถูก override แล้ว
+    -- WorldToViewportPoint จะใช้กล้องที่อัปเดตแล้ว = ESP ตรงกับสิ่งที่เห็นบนจอ
     for p, esp in pairs(ESP_Objects) do
         if not Players:FindFirstChild(p.Name) or not ESPEnabled or not isValidTarget(p) or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") then
             pcall(function()
@@ -640,11 +679,9 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= player and isValidTarget(p) and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") then
                 if not ESP_Objects[p] then createESP(p) end
-                
                 local hrp = p.Character.HumanoidRootPart
                 local hum = p.Character.Humanoid
                 local rootPos = Camera:WorldToViewportPoint(hrp.Position)
-                -- Manual viewport check: must be in front of camera AND within screen bounds
                 local vpSize = Camera.ViewportSize
                 local onScreen = rootPos.Z > 0
                     and rootPos.X >= 0 and rootPos.X <= vpSize.X
@@ -656,77 +693,34 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
                     if head then
                         local headPos = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 0.5, 0))
                         local legPos = Camera:WorldToViewportPoint(hrp.Position - Vector3.new(0, 3, 0))
-                        
                         local height = math.abs(headPos.Y - legPos.Y)
                         local width = height / 2
-                        
                         esp.Box.Size = Vector2.new(width, height)
                         esp.Box.Position = Vector2.new(headPos.X - width / 2, headPos.Y)
                         esp.Box.Visible = true
-                        
                         local distance = math.floor((Camera.CFrame.Position - hrp.Position).Magnitude)
                         local health = math.floor(hum.Health)
                         local money = getPlayerMoney(p)
-                        
-                        local icon = TargetMode == "Police" and "👮" or "🔴"
+                        local icon = TargetMode == "Police" and "\240\159\145\174" or "\240\159\148\180"
                         local mainColor = TargetMode == "Police" and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(255, 60, 60)
-                        
                         esp.Box.Color = mainColor
                         esp.Text.Color = mainColor
-                        
-                        -- Premium Tracers
                         esp.Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                         esp.Line.To = Vector2.new(legPos.X, legPos.Y)
                         esp.Line.Color = mainColor
                         esp.Line.Transparency = 0.5
                         esp.Line.Visible = true
-                        
                         esp.Text.Text = string.format("%s %s\nHP: %d | %dm\n$%s", icon, p.Name, health, distance, tostring(money))
                         esp.Text.Position = Vector2.new(headPos.X, headPos.Y - 45)
                         esp.Text.Visible = true
                     end
                 else
-                    if esp then 
+                    if esp then
                         esp.Box.Visible = false
                         esp.Text.Visible = false
-                        esp.Line.Visible = false 
+                        esp.Line.Visible = false
                     end
                 end
-            end
-        end
-    end
-end)
-
--- ==========================================
--- 🔵 [Aimlock Loop: Camera only, no HumanoidRootPart touch]
--- ==========================================
-RunService:BindToRenderStep("PvpCameraOverride", Enum.RenderPriority.Camera.Value + 1, function()
-    if not sg.Parent then return end
-
-    if AimlockEnabled and _G.LockedTarget then
-        if not _G.LockedTarget.Character or not _G.LockedTarget.Character:FindFirstChild("HumanoidRootPart") or _G.LockedTarget.Character.Humanoid.Health <= 0 or not isValidTarget(_G.LockedTarget) then
-            _G.LockedTarget = nil
-            setBtnState(aimMobileBtn, false, {Color3.fromRGB(0, 200, 100), Color3.fromRGB(0, 150, 50)}, {Color3.fromRGB(255, 50, 50), Color3.fromRGB(180, 0, 0)})
-            aimMobileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            aimMobileBtn.Text = "AIM\n(OFF)"
-            aimMobileBtn:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(255, 50, 50)
-        else
-            local targetPart = _G.LockedTarget.Character.HumanoidRootPart
-            local targetVelocity = targetPart.AssemblyLinearVelocity
-            local predictedPosition = targetPart.Position + (targetVelocity * _G.Prediction)
-            local screenPos, onScreen = Camera:WorldToViewportPoint(predictedPosition)
-            local isMobile = UserInputService.TouchEnabled
-
-            if mousemoverel and not isMobile then
-                if onScreen then
-                    local centerPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                    local deltaX = (screenPos.X - centerPos.X) * _G.AimSmoothness
-                    local deltaY = (screenPos.Y - centerPos.Y) * _G.AimSmoothness
-                    mousemoverel(deltaX, deltaY)
-                end
-            else
-                -- Mobile: Camera.CFrame only, ไม่แตะ HumanoidRootPart เด็ดขาด
-                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, predictedPosition)
             end
         end
     end
