@@ -1,5 +1,5 @@
 -- ==========================================
--- 🛠️ criminal Hex X Premium PVP
+-- 🛠️ Criminal Hex X Premium PVP (FULL FIXED VERSION)
 -- ==========================================
 
 _G.AimSmoothness = 1   
@@ -78,6 +78,7 @@ titleBar.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
 titleBar.BorderSizePixel = 0
 titleBar.Parent = mainFrame
 Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 10)
+
 -- Hide bottom corners of title bar to blend with main frame
 local titleBottomCover = Instance.new("Frame")
 titleBottomCover.Size = UDim2.new(1, 0, 0, 10)
@@ -487,7 +488,6 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
-
 -- ==========================================
 -- 🔵 [ESP System]
 -- ==========================================
@@ -513,39 +513,48 @@ local function createESP(targetPlayer)
 end
 
 -- ==========================================
--- 🚀 [Teleport Functions]
+-- 🚀 [Teleport Functions (Fixed with pcall)]
 -- ==========================================
 local function teleportElCapo()
     local myHrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    local targetPrompt = workspace:WaitForChild("ElCapoSpawnTeleport", 3) and workspace.ElCapoSpawnTeleport:WaitForChild("HumanoidRootPart", 3):WaitForChild("ElCapoSpawnTeleportPrompt", 3)
-    
-    if targetPrompt and myHrp then
-        local targetPart = targetPrompt.Parent
-        if targetPart and targetPart:IsA("BasePart") then
-            myHrp.CFrame = targetPart.CFrame * CFrame.new(0, 1, 0)
-            task.wait(0.2)
-            if fireproximityprompt then fireproximityprompt(targetPrompt) end
+    if not myHrp then return end
+    pcall(function()
+        local spawnObj = workspace:FindFirstChild("ElCapoSpawnTeleport")
+        if spawnObj then
+            local hrp = spawnObj:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local targetPrompt = hrp:FindFirstChild("ElCapoSpawnTeleportPrompt")
+                if targetPrompt and targetPrompt.Parent and targetPrompt.Parent:IsA("BasePart") then
+                    myHrp.CFrame = targetPrompt.Parent.CFrame * CFrame.new(0, 1, 0)
+                    task.wait(0.2)
+                    if fireproximityprompt then fireproximityprompt(targetPrompt) end
+                end
+            end
         end
-    end
+    end)
 end
 
 local function teleportTunnel(promptName)
     local myHrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    local targetParent = workspace:FindFirstChild("Tunnel") and workspace.Tunnel:FindFirstChild(promptName)
-    local targetPrompt = targetParent and targetParent:FindFirstChild("TunnelExitProximityPrompt")
-    
-    if targetParent and targetPrompt and myHrp then
-        local lookPos = targetParent.Position
-        local myPos = myHrp.Position
-        
-        Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, lookPos)
-        myHrp.CFrame = CFrame.new(myPos, Vector3.new(lookPos.X, myPos.Y, lookPos.Z))
-        task.wait(0.1)
-        myHrp.CFrame = targetParent.CFrame * CFrame.new(0, 1, 0)
-        myHrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-        task.wait(0.2)
-        if fireproximityprompt then fireproximityprompt(targetPrompt) end
-    end
+    if not myHrp then return end
+    pcall(function()
+        local targetParent = workspace:FindFirstChild("Tunnel") and workspace.Tunnel:FindFirstChild(promptName)
+        if targetParent then
+            local targetPrompt = targetParent:FindFirstChild("TunnelExitProximityPrompt")
+            if targetPrompt then
+                local lookPos = targetParent.Position
+                local myPos = myHrp.Position
+                
+                Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, lookPos)
+                myHrp.CFrame = CFrame.new(myPos, Vector3.new(lookPos.X, myPos.Y, lookPos.Z))
+                task.wait(0.1)
+                myHrp.CFrame = targetParent.CFrame * CFrame.new(0, 1, 0)
+                myHrp.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                task.wait(0.2)
+                if fireproximityprompt then fireproximityprompt(targetPrompt) end
+            end
+        end
+    end)
 end
 
 local function teleportEnterApt()
@@ -598,12 +607,12 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
             end
         end
         
-        -- Rainbow UI text override
+        -- Rainbow UI text override (Added Null Check for safety)
         local hue = tick() % 3 / 3
         local rainbowColor = Color3.fromHSV(hue, 1, 1)
         for _, obj in pairs(char:GetDescendants()) do
-            if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                if string.find(obj.Text, player.Name, 1, true) or string.find(obj.Text, player.DisplayName, 1, true) or string.find(obj.Text, "Hex x hub", 1, true) then
+            if (obj:IsA("TextLabel") or obj:IsA("TextButton")) and obj.Text then
+                if string.find(obj.Text, player.Name, 1, true) or string.find(obj.Text, player.DisplayName, 1, true) or string.find(string.lower(obj.Text), "hex x hub", 1, true) then
                     obj.Text = "HEX X PREMIUM"
                     obj.TextColor3 = rainbowColor
                     obj.TextStrokeTransparency = 0.2
@@ -615,12 +624,14 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
 
     for p, esp in pairs(ESP_Objects) do
         if not Players:FindFirstChild(p.Name) or not ESPEnabled or not isValidTarget(p) or not p.Character or not p.Character:FindFirstChild("HumanoidRootPart") then
-            esp.Box.Visible = false
-            esp.Text.Visible = false
-            esp.Line.Visible = false
-            esp.Box:Remove()
-            esp.Text:Remove()
-            esp.Line:Remove()
+            pcall(function()
+                esp.Box.Visible = false
+                esp.Text.Visible = false
+                esp.Line.Visible = false
+                if esp.Box.Remove then esp.Box:Remove() elseif esp.Box.Destroy then esp.Box:Destroy() end
+                if esp.Text.Remove then esp.Text:Remove() elseif esp.Text.Destroy then esp.Text:Destroy() end
+                if esp.Line.Remove then esp.Line:Remove() elseif esp.Line.Destroy then esp.Line:Destroy() end
+            end)
             ESP_Objects[p] = nil
         end
     end
@@ -680,9 +691,15 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
         end
     end
 
-    if AimlockEnabled and _G.LockedTarget then
+if AimlockEnabled and _G.LockedTarget then
         if not _G.LockedTarget.Character or not _G.LockedTarget.Character:FindFirstChild("HumanoidRootPart") or _G.LockedTarget.Character.Humanoid.Health <= 0 or not isValidTarget(_G.LockedTarget) then
             _G.LockedTarget = nil
+            
+            -- [คืนค่า AutoRotate กลับเป็น True เมื่อหลุดล็อกเป้า]
+            if player.Character and player.Character:FindFirstChild("Humanoid") then
+                player.Character.Humanoid.AutoRotate = true
+            end
+            
             setBtnState(aimMobileBtn, false, {Color3.fromRGB(0, 200, 100), Color3.fromRGB(0, 150, 50)}, {Color3.fromRGB(255, 50, 50), Color3.fromRGB(180, 0, 0)})
             aimMobileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
             aimMobileBtn.Text = "AIM\n(OFF)"
@@ -697,6 +714,7 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
             local isMobile = UserInputService.TouchEnabled
             
             if mousemoverel and not isMobile then
+                -- [สำหรับ PC: ขยับเมาส์ตามปกติ]
                 if onScreen then
                     local centerPos = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
                     local deltaX = (screenPos.X - centerPos.X) * _G.AimSmoothness
@@ -704,14 +722,35 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
                     mousemoverel(deltaX, deltaY)
                 end
             else
+                -- ==========================================================
+                -- 📱 [สำหรับมือถือ / No-Mouse: หมุนกล้อง + หมุนตัวละครแกน Y]
+                -- ==========================================================
+                
+                -- 1. หมุนกล้องหันหาเป้าหมาย (ได้ทั้ง ก้ม-เงย-ซ้าย-ขวา)
                 Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, predictedPosition)
                 
-                -- Force Character Body to turn towards the target so the gun points correctly in 1st person
-                if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    local hrp = player.Character.HumanoidRootPart
-                    hrp.CFrame = CFrame.lookAt(hrp.Position, Vector3.new(predictedPosition.X, hrp.Position.Y, predictedPosition.Z))
+                -- 2. จัดการหมุนตัวละคร (เฉพาะแนวราบ แกน Y)
+                local myChar = player.Character
+                if myChar and myChar:FindFirstChild("HumanoidRootPart") and myChar:FindFirstChild("Humanoid") then
+                    local myHrp = myChar.HumanoidRootPart
+                    local myHum = myChar.Humanoid
+                    
+                    -- ปิด AutoRotate ของเกมชั่วคราว เพื่อไม่ให้ฟิสิกส์ตีกันจนหน้าจอสั่น
+                    if myHum.AutoRotate then myHum.AutoRotate = false end
+                    
+                    -- สร้างพิกัดเป้าหมายโดย "ยึดความสูง (Y) ของตัวเราเอง" ตัวละครจะได้ไม่ก้ม/เงยจนเสียสมดุล
+                    local flatTargetPos = Vector3.new(predictedPosition.X, myHrp.Position.Y, predictedPosition.Z)
+                    
+                    -- ค่อยๆ หมุนตัวละครไปหาเป้าในแนวราบด้วย Lerp (0.5 คือความเร็วที่สมูทและกระสุนออกตรงจุดที่สุด)
+                    local targetCFrame = CFrame.lookAt(myHrp.Position, flatTargetPos)
+                    myHrp.CFrame = myHrp.CFrame:Lerp(targetCFrame, 0.5)
                 end
             end
+        end
+    else
+        -- [คืนค่า AutoRotate เมื่อไม่ได้เปิด Aimlock]
+        if player.Character and player.Character:FindFirstChild("Humanoid") and not player.Character.Humanoid.AutoRotate then
+            player.Character.Humanoid.AutoRotate = true
         end
     end
 end)
