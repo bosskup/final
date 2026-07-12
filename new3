@@ -643,10 +643,14 @@ RunService:BindToRenderStep("PvpAimlockLoop", Enum.RenderPriority.Camera.Value +
                 
                 local hrp = p.Character.HumanoidRootPart
                 local hum = p.Character.Humanoid
-                local rootPos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-                if rootPos.Z <= 0 then onScreen = false end -- ✅ ป้องกัน ESP ติดจอเมื่ออยู่หลังกล้อง
+                local rootPos = Camera:WorldToViewportPoint(hrp.Position)
+                -- Manual viewport check: must be in front of camera AND within screen bounds
+                local vpSize = Camera.ViewportSize
+                local onScreen = rootPos.Z > 0
+                    and rootPos.X >= 0 and rootPos.X <= vpSize.X
+                    and rootPos.Y >= 0 and rootPos.Y <= vpSize.Y
                 local esp = ESP_Objects[p]
-                
+
                 if onScreen and esp and hum.Health > 0 then
                     local head = p.Character:FindFirstChild("Head")
                     if head then
